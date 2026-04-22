@@ -63,12 +63,16 @@ export async function checkAndRetryJob(payload: ActionRequestMessageRetry): Prom
   const ghClient = await getOctokit(ghesApiUrl, enableOrgLevel, payload);
 
   // check job is still queued
-  if (await isJobQueued(ghClient, payload)) {
-    await publishMessage(JSON.stringify(payload), jobQueueUrl);
-    createMetric(enableMetrics, environment, payload);
-    logger.info(`Job is still queued, message published to build queue and will be handled by scale-up.`, { payload });
-  } else {
-    logger.debug(`Job is no longer queued, skipping retry`, { payload });
+  try {
+    if (await isJobQueued(ghClient, payload)) {
+      await publishMessage(JSON.stringify(payload), jobQueueUrl);
+      createMetric(enableMetrics, environment, payload);
+      logger.info(`Job is still queued, message published to build queue and will be handled by scale-up.`, { payload });
+    } else {
+      logger.debug(`Job is no longer queued, skipping retry`, { payload });
+    }
+  } catch (error) {
+    logger.console.error(`isJobQueued API call failed, job may still be queued`);
   }
 }
 
